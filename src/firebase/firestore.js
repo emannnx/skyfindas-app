@@ -3,6 +3,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   deleteDoc, 
   getDoc, 
   getDocs, 
@@ -13,7 +14,7 @@ import {
   onSnapshot,
   Timestamp
 } from 'firebase/firestore';
-import { db } from './index';
+import { db } from './config';
 
 // Collections
 export const usersCollection = collection(db, 'users');
@@ -24,22 +25,24 @@ export const appointmentsCollection = collection(db, 'appointments');
 export const createUserDocument = async (userData) => {
   try {
     const docRef = doc(db, 'users', userData.uid);
-    await updateDoc(docRef, {
-      ...userData,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-    return userData.uid;
-  } catch (error) {
-    // If document doesn't exist, create it
-    if (error.code === 'not-found') {
-      const docRef = doc(db, 'users', userData.uid);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      // Document exists, update it
       await updateDoc(docRef, {
+        ...userData,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      // Document doesn't exist, create it
+      await setDoc(docRef, {
         ...userData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }, { merge: true });
-      return userData.uid;
+      });
     }
+    return userData.uid;
+  } catch (error) {
     console.error('Error creating user document:', error);
     throw error;
   }
@@ -62,18 +65,54 @@ export const getAllServices = async () => {
     const snapshot = await getDocs(query(servicesCollection, orderBy('title')));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
+    // If index is missing, try without orderBy
+    if (error.code === 'failed-precondition') {
+      console.warn('Index missing for getAllServices, fetching without orderBy');
+      try {
+        const snapshot = await getDocs(servicesCollection);
+        const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort manually
+        return services.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      } catch (retryError) {
+        console.error('Error getting services (retry):', retryError);
+        throw retryError;
+      }
+    }
     console.error('Error getting services:', error);
+    throw error;
+  }
+};
+
+// Get only available services (for users)
+export const getAvailableServices = async () => {
+  try {
+    const allServices = await getAllServices();
+    return allServices.filter(service => service.availability !== false);
+  } catch (error) {
+    console.error('Error getting available services:', error);
     throw error;
   }
 };
 
 export const addService = async (serviceData) => {
   try {
-    return await addDoc(servicesCollection, {
+    // Validate service data
+    if (!serviceData.title || !serviceData.description) {
+      throw new Error('Service title and description are required');
+    }
+    
+    if (serviceData.duration && serviceData.duration < 15) {
+      throw new Error('Service duration must be at least 15 minutes');
+    }
+
+    const docRef = await addDoc(servicesCollection, {
       ...serviceData,
+      availability: serviceData.availability !== false, // Default to true
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    
+    return docRef;
   } catch (error) {
     console.error('Error adding service:', error);
     throw error;
@@ -159,6 +198,38 @@ export const getAppointmentsByDate = async (date) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
+    // If index is missing, try without orderBy
+    if (error.code === 'failed-precondition') {
+      console.warn('Index missing for getAppointmentsByDate, fetching without orderBy');
+      try {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const startTimestamp = Timestamp.fromDate(startOfDay);
+        const endTimestamp = Timestamp.fromDate(endOfDay);
+        
+        const q = query(
+          appointmentsCollection,
+          where('date', '>=', startTimestamp),
+          where('date', '<=', endTimestamp)
+        );
+        
+        const snapshot = await getDocs(q);
+        const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort manually
+        return appointments.sort((a, b) => {
+          const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+          const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          return dateA - dateB;
+        });
+      } catch (retryError) {
+        console.error('Error getting appointments by date (retry):', retryError);
+        throw retryError;
+      }
+    }
     console.error('Error getting appointments by date:', error);
     throw error;
   }
@@ -175,6 +246,27 @@ export const getUserAppointments = async (userId) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
+    // If index is missing, try without orderBy
+    if (error.code === 'failed-precondition') {
+      console.warn('Index missing for getUserAppointments, fetching without orderBy');
+      try {
+        const q = query(
+          appointmentsCollection,
+          where('userId', '==', userId)
+        );
+        const snapshot = await getDocs(q);
+        const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort manually
+        return appointments.sort((a, b) => {
+          const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+          const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          return dateB - dateA;
+        });
+      } catch (retryError) {
+        console.error('Error getting user appointments (retry):', retryError);
+        throw retryError;
+      }
+    }
     console.error('Error getting user appointments:', error);
     throw error;
   }
@@ -208,17 +300,57 @@ export const subscribeToAppointments = (callback) => {
 };
 
 export const subscribeToServices = (callback) => {
+  let unsubscribe = null;
+  
   try {
     const q = query(servicesCollection, orderBy('title'));
-    return onSnapshot(q, (snapshot) => {
+    unsubscribe = onSnapshot(q, (snapshot) => {
       const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       callback(services);
     }, (error) => {
-      console.error('Error in services subscription:', error);
+      // If index is missing, set up fallback subscription
+      if (error.code === 'failed-precondition') {
+        console.warn('Index missing for subscribeToServices, using without orderBy');
+        // Unsubscribe from the failed subscription if it exists
+        if (unsubscribe) {
+          unsubscribe();
+        }
+        // Set up fallback subscription without orderBy
+        unsubscribe = onSnapshot(servicesCollection, (snapshot) => {
+          const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Sort manually
+          services.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          callback(services);
+        }, (retryError) => {
+          console.error('Error in services subscription (retry):', retryError);
+        });
+      } else {
+        console.error('Error in services subscription:', error);
+      }
     });
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   } catch (error) {
-    console.error('Error setting up services subscription:', error);
-    throw error;
+    // If query setup fails, use fallback without orderBy
+    console.warn('Error setting up services subscription with orderBy, using fallback');
+    unsubscribe = onSnapshot(servicesCollection, (snapshot) => {
+      const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort manually
+      services.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      callback(services);
+    }, (fallbackError) => {
+      console.error('Error in services subscription (fallback):', fallbackError);
+    });
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }
 };
 
