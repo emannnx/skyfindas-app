@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllServices } from '../firebase/firestore';
+import { getAllServices, subscribeToServices } from '../firebase/firestore';
 
 const LandingPage = () => {
   const [services, setServices] = useState([]);
@@ -10,7 +10,9 @@ const LandingPage = () => {
     const loadServices = async () => {
       try {
         const data = await getAllServices();
-        setServices(data.slice(0, 3)); // Show only 3 services on landing
+        // Filter to show only available services, then take first 3
+        const availableServices = data.filter(service => service.availability !== false);
+        setServices(availableServices.slice(0, 3));
       } catch (error) {
         console.error('Error loading services:', error);
       } finally {
@@ -19,6 +21,14 @@ const LandingPage = () => {
     };
 
     loadServices();
+
+    // Subscribe to real-time updates for services
+    const unsubscribe = subscribeToServices((updatedServices) => {
+      const availableServices = updatedServices.filter(service => service.availability !== false);
+      setServices(availableServices.slice(0, 3));
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -50,32 +60,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="container" style={{ marginBottom: '60px' }}>
-        <h2 className="text-center mb-3">Why Choose Sky Appointments?</h2>
-        <div className="dashboard-grid">
-          <div className="service-card">
-            <h3 className="service-title">Easy Booking</h3>
-            <p className="service-description">
-              Book appointments in just a few clicks. No hassle, no waiting.
-            </p>
-          </div>
-          
-          <div className="service-card">
-            <h3 className="service-title">Real-time Updates</h3>
-            <p className="service-description">
-              Get instant notifications and updates on your appointments.
-            </p>
-          </div>
-          
-          <div className="service-card">
-            <h3 className="service-title">Professional Services</h3>
-            <p className="service-description">
-              Access a wide range of professional services tailored to your needs.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Services Preview */}
       <section className="container" style={{ marginBottom: '60px' }}>
@@ -89,7 +73,7 @@ const LandingPage = () => {
                 <h3 className="service-title">{service.title}</h3>
                 <p className="service-description">{service.description}</p>
                 <div className="service-duration">
-                  ⏱️ {service.duration} minutes
+                  {service.duration} minutes
                 </div>
                 <Link 
                   to="/signup" 
@@ -112,30 +96,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section style={{
-        backgroundColor: 'var(--primary-color)',
-        color: 'white',
-        padding: '60px 20px',
-        textAlign: 'center',
-        borderRadius: '20px',
-        margin: '0 20px 60px'
-      }}>
-        <div className="container">
-          <h2 style={{ marginBottom: '20px' }}>Ready to Get Started?</h2>
-          <p style={{ marginBottom: '30px', fontSize: '18px' }}>
-            Join thousands of satisfied customers who trust Sky Appointments for their scheduling needs.
-          </p>
-          <Link to="/signup" className="btn" style={{ 
-            backgroundColor: 'white', 
-            color: 'var(--primary-color)',
-            padding: '15px 40px',
-            fontSize: '18px'
-          }}>
-            Create Free Account
-          </Link>
-        </div>
-      </section>
     </div>
   );
 };
