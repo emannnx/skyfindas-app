@@ -28,7 +28,7 @@ const ServiceCard = ({ service, onBook }) => {
         <div className="service-header">
           <h3 className="service-title">{service.title}</h3>
           <span className="service-duration">
-            ⏱️ {service.duration} minutes
+           {service.duration} minutes
           </span>
         </div>
         
