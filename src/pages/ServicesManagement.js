@@ -67,11 +67,18 @@ const ServicesManagement = () => {
       return;
     }
 
+    if (formData.duration < 15) {
+      setError('Duration must be at least 15 minutes');
+      return;
+    }
+
     try {
       if (editingService) {
         await updateService(editingService.id, formData);
+        alert('Service updated successfully!');
       } else {
         await addService(formData);
+        alert('Service added successfully!');
       }
       
       setShowModal(false);
@@ -82,9 +89,10 @@ const ServicesManagement = () => {
         duration: 30,
         availability: true
       });
+      setError('');
     } catch (error) {
       console.error('Error saving service:', error);
-      setError('Failed to save service');
+      setError(error.message || 'Failed to save service. Please try again.');
     }
   };
 
@@ -100,12 +108,13 @@ const ServicesManagement = () => {
   };
 
   const handleDelete = async (serviceId) => {
-    if (window.confirm('Are you sure you want to delete this service? This will also delete related appointments.')) {
+    if (window.confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
       try {
         await deleteService(serviceId);
+        alert('Service deleted successfully!');
       } catch (error) {
         console.error('Error deleting service:', error);
-        alert('Failed to delete service');
+        alert('Failed to delete service. Please try again.');
       }
     }
   };
