@@ -27,9 +27,10 @@ const UserDashboard = () => {
 
     const loadData = async () => {
       try {
-        // Load services
+        // Load services - filter to show only available ones
         const servicesData = await getAllServices();
-        setServices(servicesData);
+        const availableServices = servicesData.filter(service => service.availability !== false);
+        setServices(availableServices);
 
         // Load user appointments
         const appointmentsData = await getUserAppointments(currentUser.uid);
@@ -43,9 +44,10 @@ const UserDashboard = () => {
 
     loadData();
 
-    // Subscribe to real-time updates for services
+    // Subscribe to real-time updates for services - filter by availability
     const unsubscribe = subscribeToServices((updatedServices) => {
-      setServices(updatedServices);
+      const availableServices = updatedServices.filter(service => service.availability !== false);
+      setServices(availableServices);
     });
 
     return () => unsubscribe();
