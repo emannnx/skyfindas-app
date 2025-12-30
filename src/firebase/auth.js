@@ -4,7 +4,7 @@ import {
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { auth } from './index';
+import { auth } from './config';
 import { createUserDocument } from './firestore';
 
 export const signUp = async (email, password, name) => {
