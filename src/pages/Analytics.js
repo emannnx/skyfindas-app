@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllAppointments, getAllServices } from '../firebase/firestore';
+import { 
+  getAllAppointments, 
+  getAllServices,
+  subscribeToAppointments,
+  subscribeToServices
+} from '../firebase/firestore';
 import { format, startOfWeek, endOfWeek, isSameWeek, isToday } from 'date-fns';
 
 const Analytics = () => {
@@ -16,23 +21,38 @@ const Analytics = () => {
       return;
     }
 
-    loadData();
-  }, [isAdmin]);
+    const loadData = async () => {
+      try {
+        const [appointmentsData, servicesData] = await Promise.all([
+          getAllAppointments(),
+          getAllServices()
+        ]);
+        setAppointments(appointmentsData);
+        setServices(servicesData);
+      } catch (error) {
+        console.error('Error loading analytics data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const loadData = async () => {
-    try {
-      const [appointmentsData, servicesData] = await Promise.all([
-        getAllAppointments(),
-        getAllServices()
-      ]);
-      setAppointments(appointmentsData);
-      setServices(servicesData);
-    } catch (error) {
-      console.error('Error loading analytics data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadData();
+
+    // Subscribe to real-time updates for appointments
+    const unsubscribeAppointments = subscribeToAppointments((updatedAppointments) => {
+      setAppointments(updatedAppointments);
+    });
+
+    // Subscribe to real-time updates for services
+    const unsubscribeServices = subscribeToServices((updatedServices) => {
+      setServices(updatedServices);
+    });
+
+    return () => {
+      unsubscribeAppointments();
+      unsubscribeServices();
+    };
+  }, [isAdmin]);
 
   const calculateStats = () => {
     const now = new Date();
@@ -192,6 +212,11 @@ const Analytics = () => {
 
       {/* Key Metrics */}
       <div className="analytics-grid">
+        <div className="analytics-card">
+          <div className="analytics-label">Total Services</div>
+          <div className="analytics-value">{services.length}</div>
+        </div>
+        
         <div className="analytics-card">
           <div className="analytics-label">Total Appointments</div>
           <div className="analytics-value">{stats.totalAppointments}</div>
@@ -377,6 +402,10 @@ const Analytics = () => {
       <div className="card mt-3">
         <h3>Summary</h3>
         <div style={{ marginTop: '15px', lineHeight: '1.8' }}>
+          <p>
+            <strong>Total Services Available:</strong>{' '}
+            {services.length} service{services.length !== 1 ? 's' : ''} available for booking
+          </p>
           <p>
             <strong>Current Status:</strong>{' '}
             {stats.appointmentsToday > 0 
