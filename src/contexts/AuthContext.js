@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { getCurrentUser, logout as firebaseLogout } from '../firebase/auth';
-import { getUserDocument } from '../firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { logout as firebaseLogout } from '../firebase/auth';
+import { getUserDocument, createUserDocument } from '../firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -19,22 +21,49 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const initializeAuth = async () => {
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
-        const user = await getCurrentUser();
         if (user) {
           setCurrentUser(user);
-          const userDoc = await getUserDocument(user.uid);
+          
+          // Get or create user document
+          let userDoc = await getUserDocument(user.uid);
+          
+          if (!userDoc) {
+            // Create user document if it doesn't exist
+            await createUserDocument({
+              uid: user.uid,
+              email: user.email,
+              name: user.displayName || user.email?.split('@')[0] || 'User',
+              createdAt: new Date()
+            });
+            userDoc = await getUserDocument(user.uid);
+          }
+          
           setUserData(userDoc);
+          
+          // Check if user is admin (you can customize this logic)
+          // For now, we'll check if email contains 'admin' or set via userData
+          if (userDoc?.isAdmin || user.email?.includes('admin')) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
+        } else {
+          setCurrentUser(null);
+          setUserData(null);
+          setIsAdmin(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('Error handling auth state change:', error);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    initializeAuth();
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const logout = async () => {
