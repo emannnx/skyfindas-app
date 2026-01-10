@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  getAllServices, 
-  addService, 
-  updateService, 
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  getAllServices,
+  addService,
+  updateService,
   deleteService,
-  subscribeToServices 
-} from '../firebase/firestore';
+  subscribeToServices,
+} from "../firebase/firestore";
 
 const ServicesManagement = () => {
   const { isAdmin } = useAuth();
@@ -15,16 +15,16 @@ const ServicesManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     duration: 30,
-    availability: true
+    availability: true,
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isAdmin) {
-      window.location.href = '/admin';
+      window.location.href = "/admin";
       return;
     }
 
@@ -33,7 +33,7 @@ const ServicesManagement = () => {
         const data = await getAllServices();
         setServices(data);
       } catch (error) {
-        console.error('Error loading services:', error);
+        console.error("Error loading services:", error);
       } finally {
         setLoading(false);
       }
@@ -53,46 +53,50 @@ const ServicesManagement = () => {
     const { name, value, type } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'number' ? parseInt(value) : 
-              type === 'checkbox' ? e.target.checked : value
+      [name]:
+        type === "number"
+          ? parseInt(value)
+          : type === "checkbox"
+          ? e.target.checked
+          : value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!formData.title || !formData.description) {
-      setError('Please fill in all required fields');
+      setError("Please fill in all required fields");
       return;
     }
 
     if (formData.duration < 15) {
-      setError('Duration must be at least 15 minutes');
+      setError("Duration must be at least 15 minutes");
       return;
     }
 
     try {
       if (editingService) {
         await updateService(editingService.id, formData);
-        alert('Service updated successfully!');
+        alert("Service updated successfully!");
       } else {
         await addService(formData);
-        alert('Service added successfully!');
+        alert("Service added successfully!");
       }
-      
+
       setShowModal(false);
       setEditingService(null);
       setFormData({
-        title: '',
-        description: '',
+        title: "",
+        description: "",
         duration: 30,
-        availability: true
+        availability: true,
       });
-      setError('');
+      setError("");
     } catch (error) {
-      console.error('Error saving service:', error);
-      setError(error.message || 'Failed to save service. Please try again.');
+      console.error("Error saving service:", error);
+      setError(error.message || "Failed to save service. Please try again.");
     }
   };
 
@@ -102,26 +106,33 @@ const ServicesManagement = () => {
       title: service.title,
       description: service.description,
       duration: service.duration,
-      availability: service.availability !== false
+      availability: service.availability !== false,
     });
     setShowModal(true);
   };
 
   const handleDelete = async (serviceId) => {
-    if (window.confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this service? This action cannot be undone."
+      )
+    ) {
       try {
         await deleteService(serviceId);
-        alert('Service deleted successfully!');
+        alert("Service deleted successfully!");
       } catch (error) {
-        console.error('Error deleting service:', error);
-        alert('Failed to delete service. Please try again.');
+        console.error("Error deleting service:", error);
+        alert("Failed to delete service. Please try again.");
       }
     }
   };
 
   if (loading) {
     return (
-      <div className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>
+      <div
+        className="container"
+        style={{ padding: "40px 20px", textAlign: "center" }}
+      >
         <div className="spinner"></div>
         <p>Loading services...</p>
       </div>
@@ -129,20 +140,29 @@ const ServicesManagement = () => {
   }
 
   return (
-    <div className="container" style={{ padding: '40px 20px' }}>
-      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="container" style={{ padding: "40px 20px" }}>
+      <div
+        style={{
+          marginBottom: "30px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
           <h1>Services Management</h1>
-          <p style={{ color: 'var(--gray-color)' }}>Manage available services for booking</p>
+          <p style={{ color: "var(--gray-color)" }}>
+            Manage available services for booking
+          </p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setEditingService(null);
             setFormData({
-              title: '',
-              description: '',
+              title: "",
+              description: "",
               duration: 30,
-              availability: true
+              availability: true,
             });
             setShowModal(true);
           }}
@@ -170,31 +190,39 @@ const ServicesManagement = () => {
                   <td>
                     <strong>{service.title}</strong>
                   </td>
-                  <td style={{ maxWidth: '300px' }}>
-                    <div style={{ 
-                      whiteSpace: 'nowrap', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis' 
-                    }}>
+                  <td style={{ maxWidth: "300px" }}>
+                    <div
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {service.description}
                     </div>
                   </td>
                   <td>{service.duration} minutes</td>
                   <td>
-                    <span className={`status-badge ${
-                      service.availability !== false ? 'status-approved' : 'status-cancelled'
-                    }`}>
-                      {service.availability !== false ? 'Available' : 'Unavailable'}
+                    <span
+                      className={`status-badge ${
+                        service.availability !== false
+                          ? "status-approved"
+                          : "status-cancelled"
+                      }`}
+                    >
+                      {service.availability !== false
+                        ? "Available"
+                        : "Unavailable"}
                     </span>
                   </td>
                   <td>
-                    <button 
+                    <button
                       onClick={() => handleEdit(service)}
                       className="btn btn-outline btn-small mr-1"
                     >
                       Edit
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDelete(service.id)}
                       className="btn btn-danger btn-small"
                     >
@@ -207,17 +235,17 @@ const ServicesManagement = () => {
           </table>
         </div>
       ) : (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
           <h3>No Services Added</h3>
           <p>Add your first service to get started.</p>
-          <button 
+          <button
             onClick={() => {
               setEditingService(null);
               setFormData({
-                title: '',
-                description: '',
+                title: "",
+                description: "",
                 duration: 30,
-                availability: true
+                availability: true,
               });
               setShowModal(true);
             }}
@@ -234,35 +262,37 @@ const ServicesManagement = () => {
           <div className="modal">
             <div className="modal-header">
               <h3 className="modal-title">
-                {editingService ? 'Edit Service' : 'Add New Service'}
+                {editingService ? "Edit Service" : "Add New Service"}
               </h3>
-              <button 
+              <button
                 className="modal-close"
                 onClick={() => {
                   setShowModal(false);
                   setEditingService(null);
                   setFormData({
-                    title: '',
-                    description: '',
+                    title: "",
+                    description: "",
                     duration: 30,
-                    availability: true
+                    availability: true,
                   });
                 }}
               >
                 ×
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 {error && (
-                  <div style={{
-                    backgroundColor: 'var(--danger-color)',
-                    color: 'white',
-                    padding: '10px',
-                    borderRadius: 'var(--border-radius)',
-                    marginBottom: '20px'
-                  }}>
+                  <div
+                    style={{
+                      backgroundColor: "var(--danger-color)",
+                      color: "white",
+                      padding: "10px",
+                      borderRadius: "var(--border-radius)",
+                      marginBottom: "20px",
+                    }}
+                  >
                     {error}
                   </div>
                 )}
@@ -308,7 +338,13 @@ const ServicesManagement = () => {
                 </div>
 
                 <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       name="availability"
@@ -319,26 +355,26 @@ const ServicesManagement = () => {
                   </label>
                 </div>
               </div>
-              
+
               <div className="modal-footer">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-outline"
                   onClick={() => {
                     setShowModal(false);
                     setEditingService(null);
                     setFormData({
-                      title: '',
-                      description: '',
+                      title: "",
+                      description: "",
                       duration: 30,
-                      availability: true
+                      availability: true,
                     });
                   }}
                 >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {editingService ? 'Update Service' : 'Add Service'}
+                  {editingService ? "Update Service" : "Add Service"}
                 </button>
               </div>
             </form>
