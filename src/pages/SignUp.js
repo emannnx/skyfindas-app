@@ -1,66 +1,71 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { signUp } from '../firebase/auth';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signUp } from "../firebase/auth";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setError("Password must be at least 6 characters long");
       return;
     }
 
     setLoading(true);
     try {
       await signUp(formData.email, formData.password, formData.name);
-      navigate('/dashboard');
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.message || 'Failed to create account');
+      setError(err.message || "Failed to create account");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container" style={{ maxWidth: '500px', padding: '40px 20px' }}>
+    <div
+      className="container"
+      style={{ maxWidth: "500px", padding: "40px 20px" }}
+    >
       <div className="card">
         <h2 className="text-center mb-2">Create Account</h2>
-        <p className="text-center mb-3" style={{ color: 'var(--gray-color)' }}>
+        <p className="text-center mb-3" style={{ color: "var(--gray-color)" }}>
           Join Sky Appointments today
         </p>
 
         {error && (
-          <div style={{
-            backgroundColor: 'var(--danger-color)',
-            color: 'white',
-            padding: '10px',
-            borderRadius: 'var(--border-radius)',
-            marginBottom: '20px'
-          }}>
+          <div
+            style={{
+              backgroundColor: "var(--danger-color)",
+              color: "white",
+              padding: "10px",
+              borderRadius: "var(--border-radius)",
+              marginBottom: "20px",
+            }}
+          >
             {error}
           </div>
         )}
@@ -118,25 +123,33 @@ const SignUp = () => {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary"
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
             disabled={loading}
           >
-            {loading ? 'Creating Account...' : 'Sign Up'}
+            {loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 
         <p className="text-center mt-3">
-          Already have an account?{' '}
-          <Link to="/signin" style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
+          Already have an account?{" "}
+          <Link
+            to="/signin"
+            style={{ color: "var(--primary-color)", textDecoration: "none" }}
+          >
             Sign In
           </Link>
         </p>
 
-        <div className="mt-3" style={{ fontSize: '14px', color: 'var(--dark-gray)' }}>
-          <p>By signing up, you agree to our Terms of Service and Privacy Policy.</p>
+        <div
+          className="mt-3"
+          style={{ fontSize: "14px", color: "var(--dark-gray)" }}
+        >
+          <p>
+            By signing up, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </div>
       </div>
     </div>
