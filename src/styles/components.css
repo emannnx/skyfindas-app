@@ -341,7 +341,7 @@
 }
 
 .calendar-day.has-appointments::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 5px;
   left: 50%;
@@ -411,26 +411,26 @@
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .nav {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
   }
-  
+
   .dashboard-grid,
   .analytics-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .table-container {
     overflow-x: auto;
   }
-  
+
   .calendar-grid {
     gap: 5px;
   }
-  
+
   .calendar-day {
     padding: 5px;
     font-size: 14px;
@@ -441,16 +441,16 @@
   .footer-content {
     grid-template-columns: 1fr;
   }
-  
+
   .modal {
     margin: 10px;
     max-height: 95vh;
   }
-  
+
   .appointment-actions {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
     margin-bottom: 5px;
