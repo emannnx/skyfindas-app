@@ -19,6 +19,7 @@ const AdminDashboard = () => {
     pending: 0,
     approved: 0
   });
+  
 
   useEffect(() => {
     if (!isAdmin) {
